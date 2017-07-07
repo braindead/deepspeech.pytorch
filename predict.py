@@ -108,7 +108,7 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
             del ctms[i+1]
 
     output = decoded_output[0]
-    corrected = correction(output)
+    corrected = correction(re.sub("'", "", output))
 
     corrected_words = corrected.split()
     for i in range(len(corrected_words)):
