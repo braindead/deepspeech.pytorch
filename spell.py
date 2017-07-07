@@ -38,15 +38,7 @@ def correction(sentence):
         heapify(layer)
         layer = layer[:BEAM_WIDTH]
 
-    out = ' '.join(layer[0][1])
-
-    # insert back apostrophies
-    out = re.sub("\\b(it|they|she|he|you|i|we|that) (re|ll|ve|d)\\b", r"\1'\2", out)
-    out = re.sub("\\b(it|that|he|she) s\\b", r"\1's", out)
-    out = re.sub("n t\\b", "n't", out)
-    out = re.sub("i m\\b", "i'm", out)
-
-    return out
+    return ' '.join(layer[0][1])
 
 def candidate_words(word):
     "Generate possible spelling corrections for word."

@@ -98,17 +98,14 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
         if not c is None:
             ctms.append(c)
 
-    # if there is a space before apostrophe, which happens frequently, it has to be joined with the previous ctm
-    # so that the words match up with the language model output
-    for i in range(len(ctms)):
-        if i+1 < len(ctms) and ctms[i+1]['chars'][0] == "'":
-            ctms[i]['chars'] = ctms[i]['chars'] + ctms[i+1]['chars']
-            ctms[i]['duration'] = float("{:.2f}".format(ctms[i]['duration'] + ctms[i+1]['duration']))
-            ctms[i]['conf'] = float("{:.2f}".format((ctms[i]['conf'] + ctms[i+1]['conf'])/2))
-            del ctms[i+1]
-
     output = decoded_output[0]
     corrected = correction(re.sub("'", "", output))
+
+    # insert back apostrophies
+    corrected = re.sub("\\b(it|they|she|he|you|i|we|that) (re|ll|ve|d)\\b", r"\1'\2", corrected)
+    corrected = re.sub("\\b(it|that|he|she) s\\b", r"\1's", corrected)
+    corrected = re.sub("n t\\b", "n't", corrected)
+    corrected = re.sub("i m\\b", "i'm", corrected)
 
     corrected_words = corrected.split()
     for i in range(len(corrected_words)):
