@@ -24,8 +24,15 @@ def finalize_ctm(ctm, seconds_per_timestep):
         return None
 
     conf = np.mean(ctm['probs'])
+
     start_sec = seconds_per_timestep * ctm['start_ts']
-    duration = ctm['end_ts'] * seconds_per_timestep - start_sec
+
+    trailing_blanks = re.search("_+$", chars)
+    if trailing_blanks:
+        count = len(trailing_blanks.group(0))
+        if count > 10:
+            ctm['end_ts'] -= count - 10
+    duration = (ctm['end_ts'] - ctm['start_ts']) * seconds_per_timestep
 
     return {'chars': chars, 'word': '', 'start': float("{:.2f}".format(start_sec)), 'duration': float("{:.2f}".format(duration)), 'conf': float("{:.2f}".format(conf))}
 
@@ -74,12 +81,12 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
                     ctms.append(c)
                 ctm = {'chars': [], 'probs': [], 'start_ts': None, 'end_ts': None}
         else:
-            if char != '_':
-                ctm['chars'].append(char)
-                ctm['probs'].append(np.max(np_softmax(transposed[:,i])))
-                if ctm['start_ts'] is None:
-                    ctm['start_ts'] = i
-                ctm['end_ts'] = i
+            ctm['chars'].append(char)
+            ctm['probs'].append(np.max(np_softmax(transposed[:,i])))
+
+            if ctm['start_ts'] is None:
+                ctm['start_ts'] = i
+            ctm['end_ts'] = i
 
         last_char = char
 
