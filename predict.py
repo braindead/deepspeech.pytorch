@@ -23,7 +23,7 @@ def finalize_ctm(ctm, seconds_per_timestep):
     if ctm['start_ts'] is None or ctm['end_ts'] is None:
         return None
 
-    if not re.search("[a-z]", chars):
+    if not re.search("[A-Z]", chars):
         return None
 
     conf = np.mean(ctm['probs'])
