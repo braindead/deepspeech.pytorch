@@ -107,23 +107,28 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
             ctms.append(c)
 
     output = ' ' .join([ctm['chars'] for ctm in ctms])
-    output = re.sub("_", "", output)
-    output = re.sub("'", " ", output)
     output = re.sub(r"([A-Z])\1{1,}", r"\1", output)
+    output = re.sub("[_']", "", output)
 
-    corrected = correction(output)
+    corrected_words = correction(output).split()
 
-    # insert back apostrophies
-    corrected = re.sub("\\b(it|they|she|he|you|i|we|that) (re|ll|ve|d)\\b", r"\1'\2", corrected)
-    corrected = re.sub("\\b(it|that|he|she|there|let|here) s\\b", r"\1's", corrected)
-    corrected = re.sub("n t\\b", "n't", corrected)
-    corrected = re.sub("i m\\b", "i'm", corrected)
-    corrected = re.sub("you l\\b", "you'll", corrected)
-
-    corrected_words = corrected.split()
     for i in range(len(corrected_words)):
-        if i < len(ctms):
-            ctms[i]['word'] = corrected_words[i]
+        word = corrected_words[i]
+
+        chars = ctms[i]['chars']
+        chars = re.sub("'+", "'", chars)
+        chars = re.sub("_", '', chars)
+
+        match = re.search("(\w)?'(\w)", chars)
+        if match:
+            c1 = ""
+            if match.group(1):
+                c1 = match.group(1).lower()
+            c2 = match.group(2).lower()
+            word = re.sub(c1+c2, c1+"'"+c2, word) 
+
+        ctms[i]['word'] = word
+        corrected_words[i] = word
 
     if debug:
         print('')
@@ -131,10 +136,12 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
         print('')
         print(ctms)
         print('')
-        print(''.join(chars))
+        print(' '.join([c['chars'] for c in ctms]))
         print('')
         print(output)
         print('')
+
+        corrected = ' '.join(corrected_words)
 
         if transcript_path != None and os.path.isfile(transcript_path):
             with open(transcript_path) as f:
