@@ -115,7 +115,7 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
 
     # insert back apostrophies
     corrected = re.sub("\\b(it|they|she|he|you|i|we|that) (re|ll|ve|d)\\b", r"\1'\2", corrected)
-    corrected = re.sub("\\b(it|that|he|she|there|let) s\\b", r"\1's", corrected)
+    corrected = re.sub("\\b(it|that|he|she|there|let|here) s\\b", r"\1's", corrected)
     corrected = re.sub("n t\\b", "n't", corrected)
     corrected = re.sub("i m\\b", "i'm", corrected)
     corrected = re.sub("you l\\b", "you'll", corrected)
