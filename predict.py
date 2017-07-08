@@ -77,7 +77,15 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
     for i in range(transposed.size()[1]):
         char = int_to_char[np.argmax(np_softmax(transposed[:,i]))]
         chars.append(char)
-        if char == ' ':
+
+        force_break = False
+        trailing_blanks = re.search("_+$", ''.join(chars))
+        if trailing_blanks:
+            count = len(trailing_blanks.group(0))
+            if count > 20:
+                force_break = True
+
+        if char == ' ' or force_break:
             if not last_char == ' ':
                 c = finalize_ctm(ctm, seconds_per_timestep)
                 if not c is None:
@@ -98,8 +106,12 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
         if not c is None:
             ctms.append(c)
 
-    output = decoded_output[0]
-    corrected = correction(re.sub("'", "", output))
+    output = ' ' .join([ctm['chars'] for ctm in ctms])
+    output = re.sub("_", "", output)
+    output = re.sub("'", " ", output)
+    output = re.sub(r"([A-Z])\1{1,}", r"\1", output)
+
+    corrected = correction(output)
 
     # insert back apostrophies
     corrected = re.sub("\\b(it|they|she|he|you|i|we|that) (re|ll|ve|d)\\b", r"\1'\2", corrected)
@@ -112,7 +124,6 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
         if i < len(ctms):
             ctms[i]['word'] = corrected_words[i]
 
-    #print([(catch['word'],catch['start']) for catch in ctms])
     if debug:
         print('')
         print("duration: {}s".format(duration))
