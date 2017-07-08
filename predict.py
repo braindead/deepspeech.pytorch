@@ -28,6 +28,9 @@ def finalize_ctm(ctm, seconds_per_timestep):
 
     conf = np.mean(ctm['probs'])
 
+    if chars[0] != '_' and ctm['start_ts'] - 2 > 0:
+        ctm['start_ts'] -= 2
+
     start_sec = seconds_per_timestep * ctm['start_ts']
 
     trailing_blanks = re.search("_+$", chars)
