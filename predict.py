@@ -118,6 +118,7 @@ def predict(audio_path, model, labels, audio_conf, decoder, parser, debug=False,
     corrected = re.sub("\\b(it|that|he|she|there|let) s\\b", r"\1's", corrected)
     corrected = re.sub("n t\\b", "n't", corrected)
     corrected = re.sub("i m\\b", "i'm", corrected)
+    corrected = re.sub("you l\\b", "you'll", corrected)
 
     corrected_words = corrected.split()
     for i in range(len(corrected_words)):
