@@ -1,6 +1,8 @@
 import argparse
 import sys
 import time
+from math import exp
+import re
 
 import torch
 from torch.autograd import Variable
@@ -8,6 +10,7 @@ from torch.autograd import Variable
 from data.data_loader import SpectrogramParser
 from decoder import GreedyDecoder, BeamCTCDecoder, Scorer, KenLMScorer
 from model import DeepSpeech
+import diff_match_patch
 
 parser = argparse.ArgumentParser(description='DeepSpeech prediction')
 parser.add_argument('--model_path', default='models/deepspeech_final.pth.tar',
@@ -25,11 +28,47 @@ beam_args.add_argument('--lm_beta1', default=1, type=float, help='Language model
 beam_args.add_argument('--lm_beta2', default=1, type=float, help='Language model word bonus (IV words)')
 args = parser.parse_args()
 
+SECONDS_PER_TIMESTEP = 0.02004197271773347324
+
+def chars_to_word(chars):
+    word = re.sub(r"([a-z_'])\1{1,}", r"\1", ''.join(chars))
+    word = re.sub('_', '', word)
+    return word.strip()
+
+def finalize_ctm(chars, probabilities, start_ts):
+    word = chars_to_word(chars)
+    if len(word) == 0:
+        return None
+
+    chars = ''.join(chars)
+
+    leading_blanks = re.search("^[_ ]+", chars)
+    if leading_blanks:
+        count = len(leading_blanks.group(0))
+        if count > 10:
+            start_ts += count - 10
+
+    end_ts = start_ts + len(chars)
+    trailing_blanks = re.search("[_ ]+$", chars)
+    if trailing_blanks:
+        count = len(trailing_blanks.group(0))
+        if count > 10:
+            end_ts -= count - 10
+
+    conf = float("{:.2f}".format(sum(probabilities)/len(probabilities)))
+    start = float("{:.3f}".format(start_ts * SECONDS_PER_TIMESTEP))
+    end = float("{:.3f}".format(end_ts * SECONDS_PER_TIMESTEP))
+    duration = float("{:.2f}".format((end_ts - start_ts) * SECONDS_PER_TIMESTEP))
+
+    return {'chars': ''.join(chars), 'word': word, 'conf': conf, 'start': start, 'end': end, 'duration': duration}
+
 if __name__ == '__main__':
     model = DeepSpeech.load_model(args.model_path, cuda=args.cuda)
     model.eval()
 
-    labels = DeepSpeech.get_labels(model)
+    print(args.audio_path)
+
+    labels = DeepSpeech.get_labels(model).lower()
     audio_conf = DeepSpeech.get_audio_conf(model)
 
     if args.decoder == "beam":
@@ -55,5 +94,49 @@ if __name__ == '__main__':
     decoded_output = decoder.decode(out.data)
     t1 = time.time()
 
+    probs = out.data
+    _, max_probs = torch.max(probs.transpose(0, 1), 2)
+    int_to_char = dict([(i, c) for (i, c) in enumerate(labels)])
+
+    ctms = []
+    chars = []
+    start_ts = None
+    probabilities = []
+    last_char = ''
+    for i in range(probs.size(0)):
+        char = int_to_char[max_probs[0][i]];
+
+        if start_ts == None:
+            start_ts = i
+
+        chars.append(char)
+        probabilities.append(exp(max(probs[i][0])))
+
+        if char == ' ' and last_char != ' ':
+            ctm = finalize_ctm(chars, probabilities, start_ts)
+            if ctm != None:
+                ctms.append(ctm)
+            chars = []
+            probabilities = []
+            start_ts = None
+
+        last_char = char
+
+    if len(chars) > 0:
+        ctm = finalize_ctm(chars, probabilities, start_ts)
+        if ctm != None:
+            ctms.append(ctm)
+
+    print(ctms)
+    ctm_output = ' '.join([c['word'] for c in ctms])
+    print(ctm_output)
+
     print(decoded_output[0])
+
+    dmp = diff_match_patch.diff_match_patch()
+    dmp.Diff_Timeout = 0
+    diffs = dmp.diff_wordMode(ctm_output, decoded_output[0])
+    
+    print(diffs)
+
     print("Decoded {0:.2f} seconds of audio in {1:.2f} seconds".format(spect.size(3)*audio_conf['window_stride'], t1-t0), file=sys.stderr)
