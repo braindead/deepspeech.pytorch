@@ -134,8 +134,8 @@ if __name__ == '__main__':
         labels = DeepSpeech.get_labels(model)
         audio_conf = DeepSpeech.get_audio_conf(model)
         parameters = model.parameters()
-        optimizer = torch.optim.SGD(parameters, lr=args.lr,
-                                    momentum=args.momentum, nesterov=True)
+        optimizer = torch.optim.Adam(parameters, lr=args.lr)
+
         if not args.finetune:  # Don't want to restart training
             optimizer.load_state_dict(package['optim_dict'])
             start_epoch = int(package.get('epoch', 1)) - 1  # Index start at 0 for training
@@ -191,8 +191,7 @@ if __name__ == '__main__':
                            audio_conf=audio_conf,
                            bidirectional=args.bidirectional)
         parameters = model.parameters()
-        optimizer = torch.optim.SGD(parameters, lr=args.lr,
-                                    momentum=args.momentum, nesterov=True)
+        optimizer = torch.optim.Adam(parameters, lr=args.lr)
 
     decoder = GreedyDecoder(labels)
     train_dataset = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=args.train_manifest, labels=labels,
@@ -260,7 +259,7 @@ if __name__ == '__main__':
             loss.backward()
 
             torch.nn.utils.clip_grad_norm(model.parameters(), args.max_norm)
-            # SGD step
+            # Adam step
             optimizer.step()
 
             if args.cuda:
