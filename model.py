@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.autograd import Variable
+import customizations as custom
 
 supported_rnns = {
     'lstm': nn.LSTM,
@@ -134,10 +135,10 @@ class DeepSpeech(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(0, 10)),
             nn.BatchNorm2d(32),
-            nn.Hardtanh(0, 20, inplace=True),
+            custom.Swish(),
             nn.Conv2d(32, 32, kernel_size=(21, 11), stride=(2, 1), ),
             nn.BatchNorm2d(32),
-            nn.Hardtanh(0, 20, inplace=True)
+            custom.Swish()
         )
         # Based on above convolutions and spectrogram size using conv formula (W - F + 2P)/ S+1
         rnn_input_size = int(math.floor((sample_rate * window_size) / 2) + 1)
