@@ -42,7 +42,7 @@ def decode_results(decoded_output, decoded_offsets):
         "_meta": {
             "acoustic_model": {
                 "name": os.path.basename(args.model_path),
-                **DeepSpeech.get_meta(model)
+                #**DeepSpeech.get_meta(model)
             },
             "language_model": {
                 "name": os.path.basename(args.lm_path) if args.lm_path else None,
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     model = DeepSpeech.load_model(args.model_path, cuda=args.cuda)
     model.eval()
 
-    labels = DeepSpeech.get_labels(model)
+    labels = DeepSpeech.get_labels(model).lower()
     audio_conf = DeepSpeech.get_audio_conf(model)
 
     if args.decoder == "beam":
