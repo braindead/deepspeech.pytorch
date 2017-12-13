@@ -205,7 +205,8 @@ if __name__ == '__main__':
     test_loader = AudioDataLoader(test_dataset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
 
-    if not args.no_shuffle and start_epoch != 0:
+    if not args.no_shuffle:
+    # if not args.no_shuffle and start_epoch != 0:
         print("Shuffling batches for the following epochs")
         train_sampler.shuffle()
 
