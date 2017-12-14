@@ -315,9 +315,11 @@ if __name__ == '__main__':
             seq_length = out.size(0)
             sizes = input_percentages.mul_(int(seq_length)).int()
             
-            #sizes = Variable(input_percentages.mul_(int(seq_length)).int(), requires_grad=False)
 
-            loss = criterion(out, targets, sizes, target_sizes)
+            # calculate validation loss
+            targets = Variable(targets, requires_grad=False)
+            target_sizes = Variable(target_sizes, requires_grad=False)
+            loss = criterion(out, targets, Variable(sizes, requires_grad=False), target_sizes)
             loss = loss / inputs.size(0)  # average the loss by minibatch
 
             loss_sum = loss.data.sum()
@@ -343,7 +345,7 @@ if __name__ == '__main__':
             if args.cuda:
                 torch.cuda.synchronize()
             del out
-        val_loss /= len(test_sampler)
+        val_loss /= len(test_loader)
         wer = total_wer / len(test_loader.dataset)
         cer = total_cer / len(test_loader.dataset)
         wer *= 100
@@ -352,7 +354,7 @@ if __name__ == '__main__':
         wer_results[epoch] = wer
         cer_results[epoch] = cer
         print('Validation Summary Epoch: [{0}]\t'
-              'Validation loss: {val_loss:0.3f}\t',
+              'Validation loss: {val_loss:.3f}\t'
               'Average WER {wer:.3f}\t'
               'Average CER {cer:.3f}\t'.format(
             epoch + 1, val_loss=val_loss, wer=wer, cer=cer))
