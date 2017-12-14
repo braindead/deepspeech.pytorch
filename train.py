@@ -138,6 +138,10 @@ if __name__ == '__main__':
 
         if not args.finetune:  # Don't want to restart training
             optimizer.load_state_dict(package['optim_dict'])
+            for state in optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.cuda()
             start_epoch = int(package.get('epoch', 1)) - 1  # Index start at 0 for training
             start_iter = package.get('iteration', None)
             if start_iter is None:
