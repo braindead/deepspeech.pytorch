@@ -177,6 +177,8 @@ if __name__ == '__main__':
     else:
         with open(args.labels_path) as label_file:
             labels = str(''.join(json.load(label_file)))
+            # not sure where the bug is, but this fixes it
+            labels = labels.lower()
 
         audio_conf = dict(sample_rate=args.sample_rate,
                           window_size=args.window_size,
