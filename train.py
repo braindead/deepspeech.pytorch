@@ -301,6 +301,7 @@ if __name__ == '__main__':
         total_cer, total_wer = 0, 0
         model.eval()
         for i, (data) in tqdm(enumerate(test_loader), total=len(test_loader)):
+            val_loss = 0
             inputs, targets, input_percentages, target_sizes = data
 
             inputs = Variable(inputs, volatile=True)
@@ -319,6 +320,23 @@ if __name__ == '__main__':
             out = out.transpose(0, 1)  # TxNxH
             seq_length = out.size(0)
             sizes = input_percentages.mul_(int(seq_length)).int()
+            
+
+            # calculate validation loss
+            targets = Variable(targets, requires_grad=False)
+            target_sizes = Variable(target_sizes, requires_grad=False)
+            loss = criterion(out, targets, Variable(sizes, requires_grad=False), target_sizes)
+            loss = loss / inputs.size(0)  # average the loss by minibatch
+
+            loss_sum = loss.data.sum()
+            inf = float("inf")
+            if loss_sum == inf or loss_sum == -inf:
+                print("WARNING: received an inf validation loss, setting loss value to 0")
+                loss_value = 0
+            else:
+                loss_value = loss.data[0]
+
+            val_loss += loss_value
 
             decoded_output, _ = decoder.decode(out.data, sizes)
             target_strings = decoder.convert_to_strings(split_targets)
@@ -333,6 +351,7 @@ if __name__ == '__main__':
             if args.cuda:
                 torch.cuda.synchronize()
             del out
+        val_loss /= len(test_loader)
         wer = total_wer / len(test_loader.dataset)
         cer = total_cer / len(test_loader.dataset)
         wer *= 100
@@ -341,9 +360,10 @@ if __name__ == '__main__':
         wer_results[epoch] = wer
         cer_results[epoch] = cer
         print('Validation Summary Epoch: [{0}]\t'
+              'Validation loss: {val_loss:.3f}\t'
               'Average WER {wer:.3f}\t'
               'Average CER {cer:.3f}\t'.format(
-            epoch + 1, wer=wer, cer=cer))
+            epoch + 1, val_loss=val_loss, wer=wer, cer=cer))
 
         if args.visdom:
             x_axis = epochs[0:epoch + 1]
@@ -364,6 +384,7 @@ if __name__ == '__main__':
         if args.tensorboard:
             values = {
                 'Avg Train Loss': avg_loss,
+                'Validation Loss': val_loss,
                 'Avg WER': wer,
                 'Avg CER': cer
             }
