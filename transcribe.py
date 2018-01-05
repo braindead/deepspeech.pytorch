@@ -20,6 +20,7 @@ parser.add_argument('--audio_path', default='audio.wav',
 parser.add_argument('--cuda', action="store_true", help='Use cuda to test model')
 parser.add_argument('--decoder', default="greedy", choices=["greedy", "beam"], type=str, help="Decoder to use")
 parser.add_argument('--offsets', dest='offsets', action='store_true', help='Returns time offset information')
+parser.add_argument('--raw', action='store_true', help='Return only the text of the transcript')
 beam_args = parser.add_argument_group("Beam Decode Options", "Configurations options for the CTC Beam Search decoder")
 beam_args.add_argument('--top_paths', default=1, type=int, help='number of beams to return')
 beam_args.add_argument('--beam_width', default=10, type=int, help='Beam width to use')
@@ -42,7 +43,7 @@ def decode_results(decoded_output, decoded_offsets):
         "_meta": {
             "acoustic_model": {
                 "name": os.path.basename(args.model_path),
-                **DeepSpeech.get_meta(model)
+                #**DeepSpeech.get_meta(model)
             },
             "language_model": {
                 "name": os.path.basename(args.lm_path) if args.lm_path else None,
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     model = DeepSpeech.load_model(args.model_path, cuda=args.cuda)
     model.eval()
 
-    labels = DeepSpeech.get_labels(model)
+    labels = DeepSpeech.get_labels(model).lower()
     audio_conf = DeepSpeech.get_audio_conf(model)
 
     if args.decoder == "beam":
@@ -88,4 +89,9 @@ if __name__ == '__main__':
     out = model(Variable(spect, volatile=True))
     out = out.transpose(0, 1)  # TxNxH
     decoded_output, decoded_offsets = decoder.decode(out.data)
-    print(json.dumps(decode_results(decoded_output, decoded_offsets)))
+    result = decode_results(decoded_output, decoded_offsets)
+    if args.raw:
+        print(result['output'][0]['transcription'])
+    else:
+        print(json.dumps(result))
+

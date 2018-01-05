@@ -137,10 +137,14 @@ if __name__ == '__main__':
         labels = DeepSpeech.get_labels(model)
         audio_conf = DeepSpeech.get_audio_conf(model)
         parameters = model.parameters()
-        optimizer = torch.optim.SGD(parameters, lr=args.lr,
-                                    momentum=args.momentum, nesterov=True)
+        optimizer = torch.optim.Adam(parameters, lr=args.lr)
+
         if not args.finetune:  # Don't want to restart training
             optimizer.load_state_dict(package['optim_dict'])
+            for state in optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.cuda()
             start_epoch = int(package.get('epoch', 1)) - 1  # Index start at 0 for training
             start_iter = package.get('iteration', None)
             if start_iter is None:
@@ -176,6 +180,8 @@ if __name__ == '__main__':
     else:
         with open(args.labels_path) as label_file:
             labels = str(''.join(json.load(label_file)))
+            # not sure where the bug is, but this fixes it
+            labels = labels.lower()
 
         audio_conf = dict(sample_rate=args.sample_rate,
                           window_size=args.window_size,
@@ -194,8 +200,7 @@ if __name__ == '__main__':
                            audio_conf=audio_conf,
                            bidirectional=args.bidirectional)
         parameters = model.parameters()
-        optimizer = torch.optim.SGD(parameters, lr=args.lr,
-                                    momentum=args.momentum, nesterov=True)
+        optimizer = torch.optim.Adam(parameters, lr=args.lr)
 
     decoder = GreedyDecoder(labels)
     train_dataset = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=args.train_manifest, labels=labels,
@@ -208,7 +213,8 @@ if __name__ == '__main__':
     test_loader = AudioDataLoader(test_dataset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
 
-    if not args.no_shuffle and start_epoch != 0:
+    if not args.no_shuffle:
+    # if not args.no_shuffle and start_epoch != 0:
         print("Shuffling batches for the following epochs")
         train_sampler.shuffle()
 
@@ -263,7 +269,7 @@ if __name__ == '__main__':
             loss.backward()
 
             torch.nn.utils.clip_grad_norm(model.parameters(), args.max_norm)
-            # SGD step
+            # Adam step
             optimizer.step()
 
             if args.cuda:
@@ -298,6 +304,7 @@ if __name__ == '__main__':
         total_cer, total_wer = 0, 0
         model.eval()
         for i, (data) in tqdm(enumerate(test_loader), total=len(test_loader)):
+            val_loss = 0
             inputs, targets, input_percentages, target_sizes = data
 
             inputs = Variable(inputs, volatile=True)
@@ -316,6 +323,23 @@ if __name__ == '__main__':
             out = out.transpose(0, 1)  # TxNxH
             seq_length = out.size(0)
             sizes = input_percentages.mul_(int(seq_length)).int()
+            
+
+            # calculate validation loss
+            targets = Variable(targets, requires_grad=False)
+            target_sizes = Variable(target_sizes, requires_grad=False)
+            loss = criterion(out, targets, Variable(sizes, requires_grad=False), target_sizes)
+            loss = loss / inputs.size(0)  # average the loss by minibatch
+
+            loss_sum = loss.data.sum()
+            inf = float("inf")
+            if loss_sum == inf or loss_sum == -inf:
+                print("WARNING: received an inf validation loss, setting loss value to 0")
+                loss_value = 0
+            else:
+                loss_value = loss.data[0]
+
+            val_loss += loss_value
 
             decoded_output, _ = decoder.decode(out.data, sizes)
             target_strings = decoder.convert_to_strings(split_targets)
@@ -330,6 +354,7 @@ if __name__ == '__main__':
             if args.cuda:
                 torch.cuda.synchronize()
             del out
+        val_loss /= len(test_loader)
         wer = total_wer / len(test_loader.dataset)
         cer = total_cer / len(test_loader.dataset)
         wer *= 100
@@ -338,9 +363,10 @@ if __name__ == '__main__':
         wer_results[epoch] = wer
         cer_results[epoch] = cer
         print('Validation Summary Epoch: [{0}]\t'
+              'Validation loss: {val_loss:.3f}\t'
               'Average WER {wer:.3f}\t'
               'Average CER {cer:.3f}\t'.format(
-            epoch + 1, wer=wer, cer=cer))
+            epoch + 1, val_loss=val_loss, wer=wer, cer=cer))
 
         if args.visdom:
             x_axis = epochs[0:epoch + 1]
@@ -361,6 +387,7 @@ if __name__ == '__main__':
         if args.tensorboard:
             values = {
                 'Avg Train Loss': avg_loss,
+                'Validation Loss': val_loss,
                 'Avg WER': wer,
                 'Avg CER': cer
             }
