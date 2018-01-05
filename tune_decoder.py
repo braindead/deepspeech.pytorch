@@ -60,7 +60,7 @@ def decode_dataset(logits, test_dataset, batch_size, lm_alpha, lm_beta, mesh_x, 
         out = torch.from_numpy(logits[i][0])
         sizes = torch.from_numpy(logits[i][1])
 
-        decoded_output, _, _, _ = decoder.decode(out, sizes)
+        decoded_output, _ = decoder.decode(out, sizes)
         target_strings = target_decoder.convert_to_strings(split_targets)
         wer, cer = 0, 0
         for x in range(len(target_strings)):
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     model = DeepSpeech.load_model(args.model_path, cuda=False)
     model.eval()
 
-    labels = DeepSpeech.get_labels(model)
+    labels = DeepSpeech.get_labels(model).lower()
     audio_conf = DeepSpeech.get_audio_conf(model)
     test_dataset = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=args.test_manifest, labels=labels,
                                       normalize=True)

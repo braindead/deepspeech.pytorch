@@ -159,7 +159,7 @@ class SpectrogramDataset(Dataset, SpectrogramParser):
 
     def parse_transcript(self, transcript_path):
         with open(transcript_path, 'r') as transcript_file:
-            transcript = transcript_file.read().replace('\n', '')
+            transcript = transcript_file.read().replace('\n', '').lower()
         transcript = list(filter(None, [self.labels_map.get(x) for x in list(transcript)]))
         return transcript
 
