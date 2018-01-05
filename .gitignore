@@ -101,3 +101,5 @@ ENV/
 models/
 data/*.csv
 data/*_dataset/
+logits/
+tuning_results/
