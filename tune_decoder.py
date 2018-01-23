@@ -60,11 +60,18 @@ def decode_dataset(logits, test_dataset, batch_size, lm_alpha, lm_beta, mesh_x, 
         out = torch.from_numpy(logits[i][0])
         sizes = torch.from_numpy(logits[i][1])
 
+        #print(logits[i][0])
+#        seq_length = out.size(0)
+#        for i in range(out.size(1)):
+#            start_idx = sizes[i] - 1
+#            out.data[start_idx:,i, :] = torch.zeros(seq_length-start_idx, out.size(2))-1 
+
         decoded_output, _ = decoder.decode(out, sizes)
         target_strings = target_decoder.convert_to_strings(split_targets)
         wer, cer = 0, 0
         for x in range(len(target_strings)):
             transcript, reference = decoded_output[x][0], target_strings[x][0]
+            print("Prediction: {}\nReference: {}\n-------------------------".format(transcript, reference))
             wer_inst = decoder.wer(transcript, reference) / float(len(reference.split()))
             cer_inst = decoder.cer(transcript, reference) / float(len(reference))
             wer += wer_inst

@@ -1,6 +1,7 @@
 import argparse
 
 import numpy as np
+import torch
 from torch.autograd import Variable
 from tqdm import tqdm
 
@@ -63,8 +64,10 @@ if __name__ == '__main__':
     output_data = []
     for i, (data) in tqdm(enumerate(test_loader), total=len(test_loader)):
         inputs, targets, input_percentages, target_sizes = data
+        #print(input_percentages)
 
-        inputs = Variable(inputs, volatile=True)
+        with torch.no_grad():
+            inputs = Variable(inputs)
 
         # unflatten targets
         split_targets = []
@@ -73,13 +76,22 @@ if __name__ == '__main__':
             split_targets.append(targets[offset:offset + size])
             offset += size
 
+        #print(inputs.size())
         if args.cuda:
             inputs = inputs.cuda()
 
+
         out = model(inputs)
         out = out.transpose(0, 1)  # TxNxH
+        #print(out.size())
         seq_length = out.size(0)
         sizes = input_percentages.mul_(int(seq_length)).int()
+
+        for i in range(out.size(1)):
+            start_idx = sizes[i] - 1
+            out.data[start_idx:,i, :] = torch.zeros(seq_length-start_idx, out.size(2))-1 
+
+        #print((out.transpose(0,1)).data)
 
         if decoder is None:
             # add output to data array, and continue
@@ -90,7 +102,8 @@ if __name__ == '__main__':
         target_strings = target_decoder.convert_to_strings(split_targets)
         wer, cer = 0, 0
         for x in range(len(target_strings)):
-            transcript, reference = decoded_output[x][0], target_strings[x][0]
+            transcript, reference = decoded_output[x][0], target_strings[x][0].replace(" '", "'")
+            print("Prediction: {}\nReference: {}\n-------------------------".format(transcript, reference))
             wer_inst = decoder.wer(transcript, reference) / float(len(reference.split()))
             cer_inst = decoder.cer(transcript, reference) / float(len(reference))
             wer += wer_inst

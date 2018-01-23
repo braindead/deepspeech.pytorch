@@ -105,6 +105,8 @@ class BeamCTCDecoder(Decoder):
             for p, utt in enumerate(batch):
                 size = seq_len[b][p]
                 if size > 0:
+#                    print(utt.size())
+#                    print(utt[0:size])
                     transcript = ''.join(map(lambda x: self.int_to_char[x], utt[0:size]))
                 else:
                     transcript = ''
@@ -137,6 +139,7 @@ class BeamCTCDecoder(Decoder):
         """
         probs = probs.cpu().transpose(0, 1).contiguous()
         out, scores, offsets, seq_lens = self._decoder.decode(probs)
+        #print(seq_lens)
 
         strings = self.convert_to_strings(out, seq_lens)
         offsets = self.convert_tensor(offsets, seq_lens)
