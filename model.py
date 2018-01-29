@@ -196,7 +196,7 @@ class DeepSpeech(nn.Module):
         package = torch.load(path, map_location=lambda storage, loc: storage)
         model = cls(rnn_hidden_size=package['hidden_size'], nb_layers=package['hidden_layers'],
                     labels=package['labels'], audio_conf=package['audio_conf'],
-                    rnn_type=supported_rnns[package['rnn_type']], bidirectional=package.get('bidirectional', True), activation=package['activations'])
+                    rnn_type=supported_rnns[package['rnn_type']], bidirectional=package.get('bidirectional', True), activations=package.get('activations', 'hardtanh'))
         # the blacklist parameters are params that were previous erroneously saved by the model
         # care should be taken in future versions that if batch_norm on the first rnn is required
         # that it be named something else
@@ -216,7 +216,7 @@ class DeepSpeech(nn.Module):
     def load_model_package(cls, package, cuda=False):
         model = cls(rnn_hidden_size=package['hidden_size'], nb_layers=package['hidden_layers'],
                     labels=package['labels'], audio_conf=package['audio_conf'],
-                    rnn_type=supported_rnns[package['rnn_type']], bidirectional=package.get('bidirectional', True), activations=package['activations'])
+                    rnn_type=supported_rnns[package['rnn_type']], bidirectional=package.get('bidirectional', True), activations=package.get('activations', 'hardtanh'))
         model.load_state_dict(package['state_dict'])
         if cuda:
             model = torch.nn.DataParallel(model).cuda()
@@ -306,6 +306,7 @@ if __name__ == '__main__':
     print("  RNN Layers:       ", model._hidden_layers)
     print("  RNN Size:         ", model._hidden_size)
     print("  Classes:          ", len(model._labels))
+    print("  Activations:          ", "Not_set" if not model._activations else model._activations)
     print("")
     print("Model Features")
     print("  Labels:           ", model._labels)
