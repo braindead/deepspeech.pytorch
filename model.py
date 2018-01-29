@@ -115,7 +115,7 @@ class Lookahead(nn.Module):
 
 class DeepSpeech(nn.Module):
     def __init__(self, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5, audio_conf=None,
-                 bidirectional=True, context=20):
+                 bidirectional=True, context=20, activations=None):
         super(DeepSpeech, self).__init__()
 
         # model metadata needed for serialization/deserialization
@@ -128,18 +128,20 @@ class DeepSpeech(nn.Module):
         self._audio_conf = audio_conf or {}
         self._labels = labels
         self._bidirectional = bidirectional
+        self._activations = activations
 
         sample_rate = self._audio_conf.get("sample_rate", 16000)
         window_size = self._audio_conf.get("window_size", 0.02)
         num_classes = len(self._labels)
 
+        activations = nn.Hardtanh(0, 20, inplace=True)
         self.conv = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(0, 10)),
             nn.BatchNorm2d(32),
-            custom.Swish(),
+            custom.get_activations(activations),
             nn.Conv2d(32, 32, kernel_size=(21, 11), stride=(2, 1), ),
             nn.BatchNorm2d(32),
-            custom.Swish()
+            custom.get_activations(activations)
         )
         # Based on above convolutions and spectrogram size using conv formula (W - F + 2P)/ S+1
         rnn_input_size = int(math.floor((sample_rate * window_size) / 2) + 1)
@@ -194,7 +196,7 @@ class DeepSpeech(nn.Module):
         package = torch.load(path, map_location=lambda storage, loc: storage)
         model = cls(rnn_hidden_size=package['hidden_size'], nb_layers=package['hidden_layers'],
                     labels=package['labels'], audio_conf=package['audio_conf'],
-                    rnn_type=supported_rnns[package['rnn_type']], bidirectional=package.get('bidirectional', True))
+                    rnn_type=supported_rnns[package['rnn_type']], bidirectional=package.get('bidirectional', True), activation=package['activations'])
         # the blacklist parameters are params that were previous erroneously saved by the model
         # care should be taken in future versions that if batch_norm on the first rnn is required
         # that it be named something else
@@ -214,7 +216,7 @@ class DeepSpeech(nn.Module):
     def load_model_package(cls, package, cuda=False):
         model = cls(rnn_hidden_size=package['hidden_size'], nb_layers=package['hidden_layers'],
                     labels=package['labels'], audio_conf=package['audio_conf'],
-                    rnn_type=supported_rnns[package['rnn_type']], bidirectional=package.get('bidirectional', True))
+                    rnn_type=supported_rnns[package['rnn_type']], bidirectional=package.get('bidirectional', True), activations=package['activations'])
         model.load_state_dict(package['state_dict'])
         if cuda:
             model = torch.nn.DataParallel(model).cuda()
@@ -233,7 +235,8 @@ class DeepSpeech(nn.Module):
             'audio_conf': model._audio_conf,
             'labels': model._labels,
             'state_dict': model.state_dict(),
-            'bidirectional': model._bidirectional
+            'bidirectional': model._bidirectional,
+            'activations':model._activations
         }
         if optimizer is not None:
             package['optim_dict'] = optimizer.state_dict()

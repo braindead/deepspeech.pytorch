@@ -3,8 +3,16 @@ Write different functionalities not directly available in torch here
 """
 
 import torch
+import torch.nn as nn
 
 ######### Activations ##########
+
+def get_activations(activations=None):
+    if activations == "swish":
+        return Swish()
+    else:
+        # default activation
+        return nn.Hardtanh(0, 20, inplace=True)
 
 class Swish(torch.nn.Module):
     """ Implemetation of Swish Activation function:
