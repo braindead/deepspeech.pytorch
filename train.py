@@ -203,9 +203,9 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(parameters, lr=args.lr)
 
     decoder = GreedyDecoder(labels)
-    train_dataset = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=args.train_manifest, labels=labels,
+    train_dataset = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=args.train_manifest, labels=labels.upper(),
                                        normalize=True, augment=args.augment)
-    test_dataset = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=args.val_manifest, labels=labels,
+    test_dataset = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=args.val_manifest, labels=labels.upper(),
                                       normalize=True, augment=False)
     train_sampler = BucketingSampler(train_dataset, batch_size=args.batch_size)
     train_loader = AudioDataLoader(train_dataset,
@@ -306,7 +306,6 @@ if __name__ == '__main__':
         for i, (data) in tqdm(enumerate(test_loader), total=len(test_loader)):
             val_loss = 0
             inputs, targets, input_percentages, target_sizes = data
-
             inputs = Variable(inputs, volatile=True)
 
             # unflatten targets
