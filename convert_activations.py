@@ -19,7 +19,7 @@ if __name__ == '__main__':
     package['activations'] = args.activations
     model = DeepSpeech.load_model_package(package)
 
-    print("  New Activations:          ", "hardtanh" if not model._activations else model._activations)
+    print("  New Activations:          ", "not_set" if not model._activations else model._activations)
 
     parameters = model.parameters()
     optimizer = torch.optim.Adam(parameters)
