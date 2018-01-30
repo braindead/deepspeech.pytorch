@@ -134,7 +134,6 @@ class DeepSpeech(nn.Module):
         window_size = self._audio_conf.get("window_size", 0.02)
         num_classes = len(self._labels)
 
-        activations = nn.Hardtanh(0, 20, inplace=True)
         self.conv = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(0, 10)),
             nn.BatchNorm2d(32),
