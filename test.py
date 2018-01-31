@@ -66,8 +66,11 @@ if __name__ == '__main__':
         inputs, targets, input_percentages, target_sizes = data
         #print(input_percentages)
 
-        with torch.no_grad():
-            inputs = Variable(inputs)
+        if float(torch.__version__[:3]) > 0.3:
+            with torch.no_grad():
+                inputs = Variable(inputs)
+        else:
+            inputs = Variable(inputs, volatile=True)
 
         # unflatten targets
         split_targets = []
@@ -83,15 +86,8 @@ if __name__ == '__main__':
 
         out = model(inputs)
         out = out.transpose(0, 1)  # TxNxH
-        #print(out.size())
         seq_length = out.size(0)
         sizes = input_percentages.mul_(int(seq_length)).int()
-
-        for i in range(out.size(1)):
-            start_idx = sizes[i] - 1
-            out.data[start_idx:,i, :] = torch.zeros(seq_length-start_idx, out.size(2))-1 
-
-        #print((out.transpose(0,1)).data)
 
         if decoder is None:
             # add output to data array, and continue
